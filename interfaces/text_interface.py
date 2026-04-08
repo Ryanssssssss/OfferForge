@@ -52,17 +52,10 @@ class TextInterface:
         logger.info("开始新面试会话: %s", session_id)
         return self._agent.start(resume_file, session_id)
 
-    def select_job(self, job_category: str) -> str:
-        """选择目标岗位。
-
-        Args:
-            job_category: 岗位类别。
-
-        Returns:
-            面试官的回应（介绍+第一个问题）。
-        """
-        logger.info("选择岗位: %s", job_category)
-        return self._agent.select_job(job_category)
+    def select_job(self, job_category: str, include_coding: bool = True) -> str:
+        """选择目标岗位。"""
+        logger.info("选择岗位: %s (代码题: %s)", job_category, include_coding)
+        return self._agent.select_job(job_category, include_coding=include_coding)
 
     def send_message(self, text: str) -> str:
         """发送候选人的回答文本。

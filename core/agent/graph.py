@@ -94,9 +94,10 @@ class InterviewAgent:
         self._apply_update(update)
         return self.thinker_output
 
-    def select_job(self, job_category: str) -> str:
+    def select_job(self, job_category: str, include_coding: bool = True) -> str:
         """用户选择岗位后，生成面试题并提出第一个问题。"""
         self._state["job_category"] = job_category
+        self._state["include_coding"] = include_coding
 
         # 生成题目
         update = generate_questions_node(self._state)

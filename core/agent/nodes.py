@@ -225,12 +225,46 @@ def parse_resume_node(state: InterviewState) -> dict[str, Any]:
 
 
 def generate_questions_node(state: InterviewState) -> dict[str, Any]:
-    """节点：生成面试题。"""
+    """节点：生成面试题。题目数量根据简历实体数动态决定。"""
     job_category = state["job_category"]
     resume_parsed = state.get("resume_parsed", {})
+    include_coding = state.get("include_coding", True)
 
-    logger.info("开始生成面试题，目标岗位: %s", job_category)
-    questions = _question_gen.generate(job_category, resume_data=resume_parsed)
+    # 动态计算题目数量
+    num_projects = len(resume_parsed.get("projects", []))
+    num_internships = len(resume_parsed.get("internships", []))
+    num_entities = num_projects + num_internships
+
+    is_deep_mode = "拷打" in job_category
+
+    if is_deep_mode:
+        # 深度拷打：实习每段 3 题，项目每个 2 题
+        num_questions = num_internships * 3 + num_projects * 2
+        num_questions = max(num_questions, 6)
+    else:
+        # 技术岗：实习每段 2 题，项目每个 1 题 + 3 题八股 + 1 自我介绍
+        num_questions = 1 + num_internships * 2 + num_projects + 3
+        num_questions = max(num_questions, 8)
+
+    # 上限 18 题
+    num_questions = min(num_questions, 18)
+
+    logger.info("生成面试题: 岗位=%s, 实习=%d, 项目=%d, 题目数=%d, 代码题=%s",
+                job_category, num_internships, num_projects, num_questions, include_coding)
+
+    questions = _question_gen.generate(
+        job_category, resume_data=resume_parsed,
+        num_questions=num_questions, include_coding=include_coding,
+    )
+
+    # 确认代码题确实在最后（硬保障）
+    has_leetcode = any(q.get("leetcode_id") for q in questions)
+    if include_coding and not has_leetcode:
+        logger.warning("LLM 没生成代码题，系统强制追加")
+        algo = _question_gen._pick_leetcode_question()
+        if algo:
+            algo["id"] = len(questions) + 1
+            questions.append(algo)
 
     intro = f"面试开始，共{len(questions)}道题。请结合你的实际经历作答。"
 
@@ -263,13 +297,19 @@ def ask_question_node(state: InterviewState) -> dict[str, Any]:
     memory_str = _format_memory(new_memory)
     conv_str = _format_conversation(state.get("conversation_history", []))
 
+    # 构建当前题目的完整上下文（包含关联项目）
+    related_project = question.get("related_resume_point", "")
+    question_with_context = question["question"]
+    if related_project:
+        question_with_context = f"[关于项目/经历: {related_project}] {question['question']}"
+
     interviewer_speech = thinker.think_with_template(
         INTERVIEWER_ASK_PROMPT,
         {
             "job_category": state["job_category"],
             "current_idx": idx + 1,
             "total_questions": len(questions),
-            "current_question": question["question"],
+            "current_question": question_with_context,
             "dimension": question.get("dimension", "综合"),
             "conversation_history": conv_str,
             "interview_memory": memory_str,
@@ -307,6 +347,45 @@ def process_answer_node(state: InterviewState) -> dict[str, Any]:
     current_answers = list(state.get("current_question_answers", []))
     current_answers.append(answer)
 
+    # ── 跳过检测：用户说"下一题/不会/跳过"时直接进下一题 ──
+    skip_keywords = {"下一题", "跳过", "不会", "pass", "skip", "不知道", "不了解", "不清楚", "算了"}
+    answer_stripped = answer.strip().lower().replace("，", "").replace("。", "")
+    is_skip = any(kw in answer_stripped for kw in skip_keywords) and len(answer_stripped) < 20
+
+    if is_skip:
+        # 直接跳过，不走 LLM 评估
+        response = "好，我们换一个。"
+        history.append({"role": "interviewer", "content": response})
+
+        # 给这题一个低分评估
+        question_eval = {
+            "question_id": question["id"],
+            "question": question["question"],
+            "scores": {},
+            "overall_score": 0,
+            "strengths": [],
+            "improvements": ["候选人选择跳过"],
+            "full_answer": answer,
+        }
+        evaluations = list(state.get("evaluations", []))
+        evaluations.append(question_eval)
+
+        next_idx = idx + 1
+        is_last = next_idx >= len(state["questions"])
+
+        return {
+            "thinker_output": response,
+            "interview_phase": "generate_report" if is_last else "ready_to_ask",
+            "needs_input": False,
+            "current_question_idx": next_idx,
+            "current_question_answers": [],
+            "follow_up_count": 0,
+            "evaluations": evaluations,
+            "conversation_history": history,
+            "interview_memory": new_memory,
+        }
+
+    # ── 正常流程：LLM 评估 ──
     conv_str = _format_conversation(history)
     memory_str = _format_memory(new_memory)
 

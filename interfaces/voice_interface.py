@@ -264,9 +264,9 @@ class VoiceInterviewInterface:
         audio = self._tts.synthesize(text) if self._tts else b""
         return text, audio
 
-    def select_job(self, job_category: str) -> tuple[str, bytes]:
+    def select_job(self, job_category: str, include_coding: bool = True) -> tuple[str, bytes]:
         """选择岗位，返回 (文本, 音频)。"""
-        text = self._text_interface.select_job(job_category)
+        text = self._text_interface.select_job(job_category, include_coding=include_coding)
         audio = self._tts.synthesize(text) if self._tts else b""
         return text, audio
 

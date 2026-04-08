@@ -296,12 +296,15 @@ elif st.session_state.phase == "job_select":
     col1, col2 = st.columns([3, 1])
     with col1:
         job = st.selectbox("选择岗位", options=settings.job_categories, index=0)
+        include_coding = st.checkbox("包含 LeetCode 代码题", value=(job != "简历深度拷打（不限岗位）"))
     with col2:
         st.write(""); st.write("")
         if st.button("开始面试", type="primary"):
+            # 记录是否要代码题
+            st.session_state.include_coding = include_coding
             with st.spinner(f"正在生成{job}面试题..."):
                 try:
-                    text, audio = interface.select_job(job)
+                    text, audio = interface.select_job(job, include_coding=include_coding)
                     st.session_state.messages.append({"role": "user", "content": f"我选择面试 **{job}** 岗位"})
                     st.session_state.messages.append({"role": "assistant", "content": text})
                     if audio and st.session_state.voice_mode:
@@ -335,25 +338,37 @@ elif st.session_state.phase == "interview":
         lc_id = current_q["leetcode_id"]
         problem = get_problem_by_id(lc_id)
 
-        st.markdown(f"### 💻 算法题：LeetCode {lc_id}. {current_q.get('question', '').split('。')[0].replace('算法题：', '')}")
+        title = problem.get("title", "") if problem else ""
+        st.markdown(f"### 💻 算法题：{lc_id}. {title}")
 
         if problem and problem.get("description"):
             col_desc, col_code = st.columns([1, 1])
 
             with col_desc:
                 st.markdown("#### 📋 题目描述")
-                st.markdown(problem["description"][:3000])
+                # 用 container + 固定高度滚动展示题面
+                desc_html = problem["description"][:4000].replace("\n", "<br>")
+                st.markdown(
+                    f'<div style="max-height:500px;overflow-y:auto;padding:12px;'
+                    f'background:#f8f9fa;border-radius:8px;font-size:14px;line-height:1.6;">'
+                    f'{desc_html}</div>',
+                    unsafe_allow_html=True,
+                )
+                if problem.get("slug"):
+                    st.markdown(f"[🔗 在 LeetCode 上查看](https://leetcode.cn/problems/{problem['slug']}/)")
 
             with col_code:
-                # 代码编辑器（Python3）
+                st.markdown("#### ✏️ 编写代码")
+
+                # 代码编辑器
                 default_code = problem.get("code_template", "class Solution:\n    pass")
                 if "user_code" not in st.session_state:
                     st.session_state.user_code = default_code
 
                 user_code = st.text_area(
-                    "Python3 代码",
+                    "代码",
                     value=st.session_state.user_code,
-                    height=320,
+                    height=350,
                     key="code_editor",
                     label_visibility="collapsed",
                 )
@@ -362,7 +377,7 @@ elif st.session_state.phase == "interview":
                 col_run, col_done = st.columns(2)
 
                 with col_run:
-                    if st.button("▶️ 运行样例测试", type="primary", use_container_width=True):
+                    if st.button("▶️ 运行样例", type="primary", use_container_width=True):
                         with st.spinner("运行中..."):
                             result = verify_solution(user_code, problem)
                             if result["success"]:
@@ -375,8 +390,12 @@ elif st.session_state.phase == "interview":
                                 st.code(result["error"], language="text")
 
                 with col_done:
-                    if st.button("📤 继续面试", use_container_width=True):
-                        answer = f"我的解法：\n```python\n{user_code}\n```"
+                    if st.button("📤 提交并继续", use_container_width=True):
+                        # 先跑一遍样例
+                        test_result = verify_solution(user_code, problem)
+                        test_note = f"样例测试：{test_result['passed']}/{test_result['total']} 通过" if test_result["total"] > 0 else ""
+
+                        answer = f"我的解法：\n```python\n{user_code}\n```\n{test_note}"
                         st.session_state.messages.append({"role": "user", "content": answer})
                         with st.spinner("面试官评估中..."):
                             try:
@@ -390,9 +409,7 @@ elif st.session_state.phase == "interview":
                             except Exception as e:
                                 st.error(f"出错: {e}")
 
-                # LeetCode 链接
-                if problem.get("slug"):
-                    st.markdown(f"💡 样例仅供参考，完整测试请到 [**LeetCode 提交**](https://leetcode.cn/problems/{problem['slug']}/) 验证")
+                st.caption(f"💡 本地仅跑样例（{len(problem.get('test_cases', []))} 个），完整测试请到 LeetCode 提交")
 
         else:
             # 没有完整题面，退回口述模式

@@ -78,6 +78,7 @@ class QuestionGenerator:
         job_category: str,
         resume_data: dict[str, Any] | None = None,
         num_questions: int | None = None,
+        include_coding: bool = True,
     ) -> list[dict[str, Any]]:
         """根据真题库 + 简历生成个性化面试题。
 

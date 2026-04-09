@@ -3,7 +3,9 @@
 引入按实体分割的 memory 系统：每个项目/实习/论文独立追踪，不会串。
 """
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from core.agent.states import InterviewState, ConversationMessage, InterviewMemory, EntityRecord
@@ -206,15 +208,25 @@ def _update_memory_for_answer(memory: InterviewMemory, answer: str, question_idx
 
 # ── 节点实现 ──
 
+def _resume_cache_path(resume_file: str) -> Path:
+    """缓存文件路径：与 PDF 同目录，同名 + .cache.json"""
+    return Path(resume_file).with_suffix(".pdf.cache.json")
+
+
 def parse_resume_node(state: InterviewState) -> dict[str, Any]:
-    """节点：解析简历，初始化实体级 memory。"""
+    """节点：解析简历，初始化实体级 memory。优先使用缓存跳过 LLM 调用。"""
     resume_file = state["resume_file"]
-    logger.info("开始解析简历: %s", resume_file)
+    cache_path = _resume_cache_path(resume_file)
 
-    resume_data = extract_resume_info(resume_file)
-    logger.info("简历解析完成")
+    if cache_path.exists():
+        logger.info("发现简历缓存，跳过 LLM 解析: %s", cache_path)
+        resume_data = json.loads(cache_path.read_text(encoding="utf-8"))
+    else:
+        logger.info("开始解析简历: %s", resume_file)
+        resume_data = extract_resume_info(resume_file)
+        logger.info("简历解析完成，写入缓存: %s", cache_path)
+        cache_path.write_text(json.dumps(resume_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 初始化 memory，为每个项目/实习/教育创建独立记录
     memory = _init_memory_from_resume(resume_data)
     entity_names = list(memory["entities"].keys())
     logger.info("初始化 memory，识别到 %d 个实体: %s", len(entity_names), entity_names)

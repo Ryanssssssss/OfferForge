@@ -26,9 +26,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["interview"])
 
 
+@router.get("/interview/resumes")
+async def list_resumes():
+    """列出已上传的简历文件。"""
+    settings.ensure_dirs()
+    upload_dir = Path(settings.upload_dir)
+    resumes = []
+    seen_names: set[str] = set()
+    for f in sorted(upload_dir.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True):
+        original_name = "_".join(f.name.split("_")[1:]) or f.name
+        if original_name in seen_names:
+            continue
+        seen_names.add(original_name)
+        resumes.append({
+            "path": str(f),
+            "name": original_name,
+            "size": f.stat().st_size,
+            "modified": f.stat().st_mtime,
+        })
+    return {"resumes": resumes}
+
+
 @router.post("/interview")
 async def start_interview(file: UploadFile = File(...)):
-    """上传简历 PDF，秒回 session_id（不等 LLM 解析）。"""
+    """上传新简历 PDF，秒回 session_id。"""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "请上传 PDF 格式的简历文件")
 
@@ -40,8 +61,21 @@ async def start_interview(file: UploadFile = File(...)):
     content = await file.read()
     save_path.write_bytes(content)
 
-    # 记录文件路径到 session metadata，供后续 parse 使用
     store.set_meta(session_id, "resume_path", str(save_path))
+
+    return {"session_id": session_id}
+
+
+@router.post("/interview/reuse")
+async def reuse_resume(body: dict):
+    """用已有简历创建新会话。"""
+    resume_path = body.get("resume_path", "")
+    if not resume_path or not Path(resume_path).exists():
+        raise HTTPException(400, "简历文件不存在，请重新上传")
+
+    session_id = str(uuid.uuid4())[:8]
+    store.create(session_id)
+    store.set_meta(session_id, "resume_path", resume_path)
 
     return {"session_id": session_id}
 

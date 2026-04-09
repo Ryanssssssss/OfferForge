@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, Loader2, Mic, MicOff } from "lucide-react";
+import { Send, Loader2, Mic, MicOff, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -58,7 +58,10 @@ export default function InterviewPage() {
   const [hasVoiceKey, setHasVoiceKey] = useState(true);
   const [input, setInput] = useState("");
   const [leetcodeProblem, setLeetcodeProblem] = useState<LeetCodeProblem | null>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const prevLeetcodeIdRef = useRef<number | null>(null);
   const prevMsgCountRef = useRef(0);
 
@@ -89,6 +92,21 @@ export default function InterviewPage() {
       setLeetcodeProblem(null);
     }
   }, [currentQuestion]);
+
+  // Attach camera stream to video element when it renders
+  useEffect(() => {
+    if (videoRef.current && cameraStreamRef.current) {
+      videoRef.current.srcObject = cameraStreamRef.current;
+    }
+  });
+
+  // Release camera on unmount or when interview finishes
+  useEffect(() => {
+    return () => {
+      cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current = null;
+    };
+  }, []);
 
   // Auto-play TTS for new interviewer messages in voice mode
   useEffect(() => {
@@ -130,7 +148,12 @@ export default function InterviewPage() {
     if (interviewMode === "voice") {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        stream.getTracks().forEach((t) => t.stop());
+        // Keep video stream for camera preview, stop audio tracks (re-acquired on recording)
+        stream.getAudioTracks().forEach((t) => t.stop());
+        cameraStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
       } catch {
         return;
       }
@@ -355,9 +378,42 @@ export default function InterviewPage() {
           <div className="flex flex-1 flex-col overflow-hidden">
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
               <div className="mx-auto max-w-2xl space-y-4">
-                {messages.map((msg, i) => (
-                  <ChatMessage key={i} role={msg.role} content={msg.content} />
+                {/* Camera preview for voice mode */}
+                {interviewMode === "voice" && cameraStreamRef.current && (
+                  <div className="mb-4 flex justify-center">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="h-40 w-56 rounded-xl border bg-black object-cover shadow-md"
+                    />
+                  </div>
+                )}
+
+                {/* Collapsed history */}
+                {messages.length > 2 && (
+                  <button
+                    onClick={() => setHistoryExpanded(!historyExpanded)}
+                    className="flex w-full items-center justify-center gap-1 rounded-lg py-2 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${historyExpanded ? "rotate-180" : ""}`} />
+                    {historyExpanded ? "收起历史消息" : `查看 ${messages.length - 2} 条历史消息`}
+                  </button>
+                )}
+                {historyExpanded &&
+                  messages.slice(0, -2).map((msg, i) => (
+                    <div key={i} className="opacity-50">
+                      <ChatMessage role={msg.role} content={msg.content} />
+                    </div>
+                  ))
+                }
+
+                {/* Latest round: always visible */}
+                {messages.slice(-2).map((msg, i) => (
+                  <ChatMessage key={`latest-${i}`} role={msg.role} content={msg.content} />
                 ))}
+
                 {loading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />

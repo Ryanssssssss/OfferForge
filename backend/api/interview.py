@@ -104,6 +104,7 @@ async def parse_resume(session_id: str):
             text, _audio = await asyncio.to_thread(
                 iface.start_interview, resume_path, session_id
             )
+            store.persist(session_id)
             yield {
                 "event": "done",
                 "data": json.dumps({"greeting": text}, ensure_ascii=False),
@@ -141,6 +142,7 @@ async def select_job(session_id: str, body: SelectJobRequest):
             )
             agent_state = store.get_state(session_id)
             questions_count = len(agent_state.get("questions", []))
+            store.persist(session_id)
             yield {
                 "event": "done",
                 "data": json.dumps({
@@ -177,6 +179,8 @@ async def submit_answer(session_id: str, body: SubmitAnswerRequest):
             current_idx = agent_state.get("current_question_idx", 0)
             questions = agent_state.get("questions", [])
             current_q = questions[current_idx] if current_idx < len(questions) else None
+
+            store.persist(session_id)
 
             yield {
                 "event": "response",

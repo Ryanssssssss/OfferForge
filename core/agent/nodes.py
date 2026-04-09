@@ -454,9 +454,38 @@ def process_answer_node(state: InterviewState) -> dict[str, Any]:
     )
 
     need_followup = eval_result.get("need_followup", False) and follow_up_count < max_follow_ups
+    terminate = eval_result.get("terminate_interview", False)
     response = eval_result.get("response", "")
 
     history.append({"role": "interviewer", "content": response})
+
+    if terminate:
+        full_answer = "\n".join(current_answers)
+        question_eval = _evaluator.evaluate_answer(
+            question=question["question"],
+            question_type=question.get("type", "behavioral"),
+            dimension=question.get("dimension", "综合"),
+            full_answer=full_answer,
+        )
+        question_eval["question_id"] = question["id"]
+        question_eval["question"] = question["question"]
+        question_eval["full_answer"] = full_answer
+
+        evaluations = list(state.get("evaluations", []))
+        evaluations.append(question_eval)
+
+        logger.warning("面试官决定终止面试 (session=%s)", state.get("session_id", "?"))
+        return {
+            "thinker_output": response,
+            "interview_phase": "generate_report",
+            "needs_input": False,
+            "current_question_idx": len(state["questions"]),
+            "current_question_answers": [],
+            "follow_up_count": 0,
+            "evaluations": evaluations,
+            "conversation_history": history,
+            "interview_memory": new_memory,
+        }
 
     if need_followup:
         return {

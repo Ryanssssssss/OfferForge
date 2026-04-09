@@ -33,8 +33,7 @@
 **后端（Python）：**
 
 ```bash
-uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
+uv sync
 ```
 
 **前端（Node.js）：**

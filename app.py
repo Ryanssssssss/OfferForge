@@ -336,12 +336,41 @@ elif st.session_state.phase == "interview":
         st.session_state.phase = "report"
         st.rerun()
 
+    # 延迟处理待提交的回答：先显示 spinner，不渲染旧 UI，避免重影
+    if "pending_submit" in st.session_state:
+        pending = st.session_state.pop("pending_submit")
+        with st.spinner(pending.get("spinner_text", "处理中...")):
+            try:
+                response, audio_out = interface.process_text_input(pending["answer"])
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                if audio_out:
+                    st.session_state.pending_audio = audio_out
+            except Exception as e:
+                st.error(f"出错: {e}")
+        if pending.get("clear_code"):
+            for k in ["user_code", "code_lang_prev"]:
+                if k in st.session_state:
+                    del st.session_state[k]
+        if pending.get("increment_input_key"):
+            st.session_state.input_key = st.session_state.get("input_key", 0) + 1
+        st.rerun()
+
     # 检测当前是否是算法题（最后一题含 leetcode_id）
     agent_state = interface.text_interface._agent.state
     questions = agent_state.get("questions", [])
     current_idx = agent_state.get("current_question_idx", 0)
     current_q = questions[current_idx] if current_idx < len(questions) else {}
     is_coding = bool(current_q.get("leetcode_id"))
+
+    # 代码已提交后切换到对话模式（面试官可能追问思路/复杂度）
+    code_submitted = st.session_state.get("code_submitted", False)
+    if code_submitted:
+        # 检查是否已经切到新题了（agent 进入下一题）
+        if agent_state.get("interview_phase") in ("ready_to_ask", "generate_report", "finished"):
+            st.session_state.code_submitted = False
+            code_submitted = False
+        else:
+            is_coding = False  # 当前题还在讨论中，进入对话模式
 
     # ── 算法题代码模式 ──
     if is_coding and agent_state.get("interview_phase") == "waiting_answer":
@@ -419,6 +448,7 @@ elif st.session_state.phase == "interview":
 
                         answer = f"我的解法（{selected_lang}）：\n```{lang_slug}\n{user_code}\n```\n{test_note}"
                         st.session_state.messages.append({"role": "user", "content": answer})
+
                         with st.spinner("面试官评估中..."):
                             try:
                                 response, audio_out = interface.process_text_input(answer)
@@ -426,8 +456,10 @@ elif st.session_state.phase == "interview":
                                 if audio_out:
                                     st.session_state.pending_audio = audio_out
                             except Exception as e:
-                                st.error(f"出错: {e}")
-                        # 清除代码编辑状态
+                                st.session_state.messages.append({"role": "assistant", "content": f"代码已收到。{test_note}"})
+
+                        # 标记代码已提交，下次 rerun 跳过代码编辑器进入对话模式
+                        st.session_state.code_submitted = True
                         for k in ["user_code", "code_lang_prev"]:
                             if k in st.session_state:
                                 del st.session_state[k]
@@ -503,14 +535,11 @@ elif st.session_state.phase == "interview":
                 if st.button("提交", key=f"b_{ik}", type="primary", use_container_width=True):
                     if text_answer:
                         st.session_state.messages.append({"role": "user", "content": text_answer})
-                        with st.spinner("面试官思考中..."):
-                            try:
-                                response, audio_out = interface.process_text_input(text_answer)
-                                st.session_state.messages.append({"role": "assistant", "content": response})
-                                if audio_out: st.session_state.pending_audio = audio_out
-                            except Exception as e:
-                                st.error(f"出错: {e}")
-                        st.session_state.input_key += 1
+                        st.session_state.pending_submit = {
+                            "answer": text_answer,
+                            "spinner_text": "面试官思考中...",
+                            "increment_input_key": True,
+                        }
                         st.rerun()
 
             # 语音处理

@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # ── 岗位类别 ──
     job_categories: list[str] = [
         "简历深度拷打（不限岗位）",
+        "纯算法题",
         "后端开发",
         "前端开发",
         "全栈开发",

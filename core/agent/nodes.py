@@ -25,25 +25,48 @@ _reporter = ReportGenerator()
 # ── Memory 工具函数 ──
 
 def _init_memory_from_resume(resume_data: dict) -> InterviewMemory:
-    """从简历数据初始化 memory，为每个项目/实习/论文创建独立记录。"""
+    """从简历数据初始化 memory，为每个项目/实习/论文/研究创建独立记录。"""
     entities: dict[str, EntityRecord] = {}
 
     # 项目
     for proj in resume_data.get("projects", []):
         name = proj.get("name", "未命名项目")
         entities[name] = {
-            "name": name,
-            "entity_type": "project",
-            "asked_topics": [],
-            "candidate_answers": [],
-            "status": "not_started",
+            "name": name, "entity_type": "project",
+            "asked_topics": [], "candidate_answers": [], "status": "not_started",
         }
 
     # 实习
     for intern in resume_data.get("internships", []):
         name = f"{intern.get('company', '')}_{intern.get('role', '')}"
         entities[name] = {
-            "name": name,
+            "name": name, "entity_type": "internship",
+            "asked_topics": [], "candidate_answers": [], "status": "not_started",
+        }
+
+    # 论文
+    for pub in resume_data.get("publications", []):
+        name = pub.get("title", "未命名论文")
+        entities[name] = {
+            "name": name, "entity_type": "publication",
+            "asked_topics": [], "candidate_answers": [], "status": "not_started",
+        }
+
+    # 研究经历
+    for res in resume_data.get("research", []):
+        name = res.get("topic", "未命名研究")
+        entities[name] = {
+            "name": name, "entity_type": "research",
+            "asked_topics": [], "candidate_answers": [], "status": "not_started",
+        }
+
+    # 教育
+    for edu in resume_data.get("education", []):
+        name = f"{edu.get('school', '')}_{edu.get('major', '')}"
+        entities[name] = {
+            "name": name, "entity_type": "education",
+            "asked_topics": [], "candidate_answers": [], "status": "not_started",
+        }
             "entity_type": "internship",
             "asked_topics": [],
             "candidate_answers": [],
@@ -230,22 +253,56 @@ def generate_questions_node(state: InterviewState) -> dict[str, Any]:
     resume_parsed = state.get("resume_parsed", {})
     include_coding = state.get("include_coding", True)
 
-    # 动态计算题目数量
+    is_algo_only = "算法题" in job_category
+
+    # ── 纯算法题模式：直接从 LeetCode 题库选题 ──
+    if is_algo_only:
+        import random
+        num_algo = 5  # 默认 5 道算法题
+        questions = []
+        used_ids = set()
+        for i in range(num_algo):
+            q = _question_gen._pick_leetcode_question()
+            # 防重复
+            while q and q.get("leetcode_id") in used_ids:
+                q = _question_gen._pick_leetcode_question()
+            if q:
+                used_ids.add(q["leetcode_id"])
+                q["id"] = i + 1
+                questions.append(q)
+
+        intro = f"纯算法模式，共 {len(questions)} 道 LeetCode 题。请在代码编辑器里完成。"
+        history = list(state.get("conversation_history", []))
+        history.append({"role": "interviewer", "content": intro})
+
+        return {
+            "questions": questions,
+            "current_question_idx": 0,
+            "follow_up_count": 0,
+            "max_follow_ups": 1,
+            "evaluations": [],
+            "current_question_answers": [],
+            "thinker_output": intro,
+            "interview_phase": "ready_to_ask",
+            "needs_input": False,
+            "conversation_history": history,
+        }
+
+    # ── 正常模式 ──
     num_projects = len(resume_parsed.get("projects", []))
     num_internships = len(resume_parsed.get("internships", []))
-    num_entities = num_projects + num_internships
+    num_publications = len(resume_parsed.get("publications", []))
+    num_research = len(resume_parsed.get("research", []))
 
     is_deep_mode = "拷打" in job_category
 
     if is_deep_mode:
-        # 深度拷打：实习每段 3 题，项目每个 2 题（所有经历都问）
-        num_questions = num_internships * 3 + num_projects * 2
+        # 实习 3 题，项目 2 题，论文/研究各 2 题
+        num_questions = num_internships * 3 + num_projects * 2 + (num_publications + num_research) * 2
     else:
-        # 技术岗：上限 = 1(自介) + 实习*2 + 项目*1 + 3(八股)
-        # LLM 会自动过滤不相关的经历，实际出题数可能更少
-        num_questions = 1 + num_internships * 2 + num_projects + 3
+        # 实习 2 题，项目 1 题，论文/研究 1 题，八股 3 题，自介 1 题
+        num_questions = 1 + num_internships * 2 + num_projects + (num_publications + num_research) + 3
 
-    # 至少 3 题（自介 + 1题 + 八股1题），上限 18 题
     num_questions = max(num_questions, 3)
     num_questions = min(num_questions, 18)
 

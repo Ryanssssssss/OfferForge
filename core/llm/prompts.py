@@ -44,6 +44,23 @@ RESUME_EXTRACTION_PROMPT = """\
       "responsibilities": ["职责1", "职责2"]
     }}
   ],
+  "publications": [
+    {{
+      "title": "论文标题",
+      "venue": "发表会议/期刊（如有）",
+      "year": "年份",
+      "description": "研究内容简述",
+      "role": "第几作者/主要贡献"
+    }}
+  ],
+  "research": [
+    {{
+      "topic": "研究方向/课题名称",
+      "lab": "实验室/导师（如有）",
+      "description": "研究内容",
+      "achievements": ["成果1"]
+    }}
+  ],
   "awards": ["获奖经历1"],
   "summary": "用2-3句话总结该候选人的核心竞争力"
 }}

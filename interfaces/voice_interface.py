@@ -294,7 +294,6 @@ class VoiceInterviewInterface:
 
         response = self._text_interface.send_message(user_text)
         audio = self._tts.synthesize(response)
-        audio = self._tts.synthesize(response)
 
         return user_text, response, audio
 

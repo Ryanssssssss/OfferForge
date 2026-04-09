@@ -76,13 +76,26 @@ VOICE_API_KEY=
 
 ### 3. 启动
 
+**macOS / Linux：**
+
 ```bash
-# 终端 1：启动后端 (端口 8000)
+# 终端 1：启动后端
 source .venv/bin/activate
 uvicorn backend.main:app --reload --port 8000
 
-# 终端 2：启动前端 (端口 3000)
+# 终端 2：启动前端
 cd frontend && npm run dev
+```
+
+**Windows (PowerShell)：**
+
+```powershell
+# 终端 1：启动后端
+.venv\Scripts\Activate.ps1
+uvicorn backend.main:app --reload --port 8000
+
+# 终端 2：启动前端
+cd frontend; npm run dev
 ```
 
 打开 `http://localhost:3000` 即可使用。

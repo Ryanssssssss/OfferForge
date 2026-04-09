@@ -267,15 +267,50 @@ async def get_providers():
 
 @router.put("/interview/config")
 async def update_config(body: dict):
-    """运行时更新 LLM / 语音配置。"""
+    """运行时更新 LLM / 语音配置，并持久化到 .env。"""
+    env_updates: dict[str, str] = {}
+
     if "provider" in body:
         settings.llm_provider = body["provider"]
+        env_updates["LLM_PROVIDER"] = body["provider"]
     if "model" in body:
         settings.llm_model_name = body["model"]
+        env_updates["LLM_MODEL_NAME"] = body["model"]
     if "api_key" in body and body["api_key"]:
         key_attr = f"{settings.llm_provider}_api_key"
         setattr(settings, key_attr, body["api_key"])
+        env_updates[key_attr.upper()] = body["api_key"]
     if "voice_api_key" in body and body["voice_api_key"]:
         settings.voice_api_key = body["voice_api_key"]
+        env_updates["VOICE_API_KEY"] = body["voice_api_key"]
+
+    if env_updates:
+        _persist_env(env_updates)
 
     return {"ok": True}
+
+
+def _persist_env(updates: dict[str, str]) -> None:
+    """将配置变更写入 .env 文件（新增或替换已有行）。"""
+    env_path = Path(".env")
+    lines: list[str] = []
+    if env_path.exists():
+        lines = env_path.read_text(encoding="utf-8").splitlines()
+
+    updated_keys: set[str] = set()
+    new_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key in updates:
+                new_lines.append(f"{key}={updates[key]}")
+                updated_keys.add(key)
+                continue
+        new_lines.append(line)
+
+    for key, value in updates.items():
+        if key not in updated_keys:
+            new_lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")

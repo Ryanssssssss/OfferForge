@@ -178,7 +178,7 @@ class QuestionGenerator:
         chosen = random.choice(pool)
 
         return {
-            "question": f"算法题：LeetCode {chosen['id']}. {chosen['title']}。请口述你的解题思路，说清楚用什么数据结构和算法，时间空间复杂度分别是多少。",
+            "question": f"算法题：LeetCode {chosen['id']}. {chosen['title']}。请在右侧代码编辑器中完成解题，也可以在下方输入框讨论思路。",
             "type": "technical",
             "dimension": "算法与数据结构",
             "difficulty": chosen.get("difficulty", "medium"),

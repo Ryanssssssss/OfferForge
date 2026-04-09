@@ -52,22 +52,31 @@ cd frontend && npm install
 cp .env.example .env
 ```
 
-编辑 `.env`，填写所选 Provider 的 API Key：
+有两种配置方式（任选其一）：
+
+**方式 A：在 Web 界面配置（推荐）**
+
+启动后点击侧边栏的「AI 模型配置」，选择提供商、填入 API Key，保存后自动写入 `.env`，无需手动编辑。
+
+**方式 B：手动编辑 `.env`**
 
 ```bash
-# 选择 LLM 提供商（面试对话用）
-LLM_PROVIDER=deepseek
-DEEPSEEK_API_KEY=your-key
+# LLM 提供商：deepseek / openai / gemini / qwen / zhipu / moonshot / siliconflow / custom
+LLM_PROVIDER=你选的提供商
+
+# 填写对应提供商的 API Key（只需填一个）
+DEEPSEEK_API_KEY=
+OPENAI_API_KEY=
+QWEN_API_KEY=
+# ... 其他 Key 见 .env.example
 
 # 语音功能（可选）
 # 使用阿里云 DashScope 的 Qwen3 系列语音模型
-# TTS: qwen3-tts-instruct-flash-realtime（语音合成）
-# STT: qwen3-omni-flash（语音识别）
 # 获取 Key: https://dashscope.console.aliyun.com/apiKey
-VOICE_API_KEY=your-dashscope-key
+VOICE_API_KEY=
 ```
 
-完整配置项参考 [.env.example](.env.example)。
+> 在 Web 界面修改的配置会自动持久化到 `.env`，重启后依然生效。
 
 ### 3. 启动
 

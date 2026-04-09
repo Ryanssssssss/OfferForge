@@ -147,7 +147,7 @@ export default function InterviewPage() {
             <span className="text-xs text-muted-foreground whitespace-nowrap">语速 {voiceSpeed}x</span>
             <input
               type="range"
-              min={0.5}
+              min={1.0}
               max={2.0}
               step={0.25}
               value={voiceSpeed}
@@ -300,7 +300,7 @@ export default function InterviewPage() {
                     </div>
                     <input
                       type="range"
-                      min={0.5}
+                      min={1.0}
                       max={2.0}
                       step={0.25}
                       value={voiceSpeed}

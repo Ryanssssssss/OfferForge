@@ -28,7 +28,7 @@ class QwenTTS:
     def __init__(self, voice: str | None = None):
         self._voice = voice or settings.voice_name
 
-    def synthesize(self, text: str) -> bytes:
+    def synthesize(self, text: str, speed: float = 1.25) -> bytes:
         """将文本合成为 PCM 音频，返回 WAV 字节。
 
         Args:
@@ -104,7 +104,7 @@ class QwenTTS:
                 response_format=AudioFormat.PCM_24000HZ_MONO_16BIT,
                 instructions="语速较快，语气专业干练，像资深面试官一样沉稳有力。",
                 optimize_instructions=True,
-                speed=1.25,
+                speed=speed,
                 mode="server_commit",
             )
 
@@ -258,22 +258,30 @@ class VoiceInterviewInterface:
     def is_finished(self) -> bool:
         return self._text_interface.is_finished
 
+    def _get_speed(self) -> float:
+        """从 streamlit session_state 获取用户设置的语速。"""
+        try:
+            import streamlit as st
+            return st.session_state.get("voice_speed", 1.25)
+        except Exception:
+            return 1.25
+
     def start_interview(self, resume_file: str, session_id: str = "default") -> tuple[str, bytes]:
         """开始面试，返回 (文本, 音频)。"""
         text = self._text_interface.start_interview(resume_file, session_id)
-        audio = self._tts.synthesize(text) if self._tts else b""
+        audio = self._tts.synthesize(text, speed=self._get_speed()) if self._tts else b""
         return text, audio
 
     def select_job(self, job_category: str, include_coding: bool = True) -> tuple[str, bytes]:
         """选择岗位，返回 (文本, 音频)。"""
         text = self._text_interface.select_job(job_category, include_coding=include_coding)
-        audio = self._tts.synthesize(text) if self._tts else b""
+        audio = self._tts.synthesize(text, speed=self._get_speed()) if self._tts else b""
         return text, audio
 
     def process_text_input(self, text: str) -> tuple[str, bytes]:
         """处理文本输入，返回 (面试官文本, 音频)。"""
         response = self._text_interface.send_message(text)
-        audio = self._tts.synthesize(response) if self._tts else b""
+        audio = self._tts.synthesize(response, speed=self._get_speed()) if self._tts else b""
         return response, audio
 
     def process_voice_input(self, audio_bytes: bytes) -> tuple[str, str, bytes]:
@@ -281,15 +289,12 @@ class VoiceInterviewInterface:
         if not self._stt or not self._tts:
             return "", "语音服务未配置", b""
 
-        # STT
         user_text = self._stt.transcribe(audio_bytes)
         if not user_text:
             return "", "没听清，请再说一次。", b""
 
-        # Agent 处理
         response = self._text_interface.send_message(user_text)
-
-        # TTS
+        audio = self._tts.synthesize(response, speed=self._get_speed())
         audio = self._tts.synthesize(response)
 
         return user_text, response, audio

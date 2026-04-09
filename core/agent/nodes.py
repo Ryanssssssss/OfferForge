@@ -238,15 +238,15 @@ def generate_questions_node(state: InterviewState) -> dict[str, Any]:
     is_deep_mode = "拷打" in job_category
 
     if is_deep_mode:
-        # 深度拷打：实习每段 3 题，项目每个 2 题
+        # 深度拷打：实习每段 3 题，项目每个 2 题（所有经历都问）
         num_questions = num_internships * 3 + num_projects * 2
-        num_questions = max(num_questions, 6)
     else:
-        # 技术岗：实习每段 2 题，项目每个 1 题 + 3 题八股 + 1 自我介绍
+        # 技术岗：上限 = 1(自介) + 实习*2 + 项目*1 + 3(八股)
+        # LLM 会自动过滤不相关的经历，实际出题数可能更少
         num_questions = 1 + num_internships * 2 + num_projects + 3
-        num_questions = max(num_questions, 8)
 
-    # 上限 18 题
+    # 至少 3 题（自介 + 1题 + 八股1题），上限 18 题
+    num_questions = max(num_questions, 3)
     num_questions = min(num_questions, 18)
 
     logger.info("生成面试题: 岗位=%s, 实习=%d, 项目=%d, 题目数=%d, 代码题=%s",

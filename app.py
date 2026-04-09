@@ -134,6 +134,8 @@ with st.sidebar:
         st.session_state.voice_mode = st.toggle("🎤 语音面试模式", value=st.session_state.voice_mode)
         if st.session_state.voice_mode:
             st.markdown('<div class="voice-status voice-on">🎤 语音模式已开启</div>', unsafe_allow_html=True)
+            # 语速滑块（值自动存在 st.session_state.voice_speed）
+            st.slider("语速", min_value=0.75, max_value=2.0, value=1.25, step=0.25, key="voice_speed")
         else:
             st.markdown('<div class="voice-status voice-off">⌨️ 文本模式</div>', unsafe_allow_html=True)
     else:

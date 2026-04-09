@@ -67,22 +67,6 @@ def _init_memory_from_resume(resume_data: dict) -> InterviewMemory:
             "name": name, "entity_type": "education",
             "asked_topics": [], "candidate_answers": [], "status": "not_started",
         }
-            "entity_type": "internship",
-            "asked_topics": [],
-            "candidate_answers": [],
-            "status": "not_started",
-        }
-
-    # 教育
-    for edu in resume_data.get("education", []):
-        name = f"{edu.get('school', '')}_{edu.get('major', '')}"
-        entities[name] = {
-            "name": name,
-            "entity_type": "education",
-            "asked_topics": [],
-            "candidate_answers": [],
-            "status": "not_started",
-        }
 
     return {
         "entities": entities,

@@ -36,6 +36,8 @@
 uv sync
 ```
 
+> Windows 用户若看到 `Failed to hardlink files; falling back to full copy` 警告，可忽略，不影响功能。如需消除，设置环境变量 `$env:UV_LINK_MODE="copy"` 后重新执行。
+
 **前端（Node.js）：**
 
 ```bash

@@ -109,7 +109,7 @@ export default function HomePage() {
                     未配置 {providerName} API Key
                   </p>
                   <p className="mt-0.5 text-amber-700 dark:text-amber-300">
-                    请先点击侧边栏「AI 模型配置」填写 API Key，否则无法解析简历
+                    请先点击侧边栏「模型配置」填写 API Key，否则无法解析简历
                   </p>
                 </div>
               </div>

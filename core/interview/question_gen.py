@@ -142,14 +142,6 @@ class QuestionGenerator:
             if "id" not in q:
                 q["id"] = i + 1
 
-        # 3. 技术岗最后追加一道 LeetCode Hot 100 算法题
-        tech_categories = {"后端开发", "前端开发", "全栈开发", "数据工程师", "算法工程师", "测试工程师", "DevOps"}
-        if job_category in tech_categories:
-            algo_question = self._pick_leetcode_question()
-            if algo_question:
-                algo_question["id"] = len(questions) + 1
-                questions.append(algo_question)
-
         logger.info("成功生成 %d 道面试题 (岗位: %s)", len(questions), job_category)
         return questions
 

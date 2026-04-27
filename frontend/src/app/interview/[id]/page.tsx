@@ -381,7 +381,7 @@ export default function InterviewPage() {
                       type="button"
                       onClick={() => {
                         if (!hasVoiceKey) {
-                          alert("尚未配置语音 API Key（DashScope），请先在侧边栏「AI 模型配置」中填写");
+                          alert("尚未配置语音 API Key（DashScope），请先在侧边栏「模型配置」中填写");
                           return;
                         }
                         setInterviewMode("voice");

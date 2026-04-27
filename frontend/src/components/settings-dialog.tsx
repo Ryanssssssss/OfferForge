@@ -89,11 +89,11 @@ export function SettingsDialog() {
         className="inline-flex w-full items-center justify-start gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
       >
         <Settings className="h-4 w-4" />
-        AI 模型配置
+        模型配置
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>AI 模型配置</DialogTitle>
+          <DialogTitle>模型配置</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">

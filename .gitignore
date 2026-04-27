@@ -20,6 +20,9 @@ data/chroma_db/
 data/uploads/
 data/sessions/
 
+# Cursor AI 指南（仅本地使用）
+AGENTS.md
+
 # IDE / 工具
 .streamlit/secrets.toml
 .codebuddy/

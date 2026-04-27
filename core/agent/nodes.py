@@ -310,10 +310,7 @@ def generate_questions_node(state: InterviewState) -> dict[str, Any]:
         num_questions=num_questions, include_coding=include_coding,
     )
 
-    # 确认代码题确实在最后（硬保障）
-    has_leetcode = any(q.get("leetcode_id") for q in questions)
-    if include_coding and not has_leetcode:
-        logger.warning("LLM 没生成代码题，系统强制追加")
+    if include_coding:
         algo = _question_gen._pick_leetcode_question()
         if algo:
             algo["id"] = len(questions) + 1

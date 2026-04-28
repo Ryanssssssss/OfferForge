@@ -167,6 +167,71 @@ class QwenTTS:
         return bool(settings.voice_api_key)
 
 
+class CustomTTS:
+    """调用自部署的 Qwen3-TTS 推理服务（远程 IP:端口）。
+
+    接口约定（Qwen3-TTS 标准部署格式）：
+        POST {base_url}/tts
+        Body: {"text": "...", "language": "zh", "stream": false}
+        Response: {"audio_data": "<base64 wav>"}
+    """
+
+    def __init__(self, base_url: str | None = None):
+        url = (base_url or settings.custom_tts_url).rstrip("/")
+        # 自动补 http:// 前缀
+        if url and not url.startswith(("http://", "https://")):
+            url = f"http://{url}"
+        self._base_url = url
+
+    def synthesize(self, text: str, **kwargs) -> bytes:
+        """调用远程推理服务合成语音，返回 WAV 字节。"""
+        if not self._base_url:
+            logger.error("custom_tts_url 未配置")
+            return b""
+
+        try:
+            import requests as _req
+        except ImportError:
+            logger.error("requests 库未安装")
+            return b""
+
+        payload = {
+            "text": text,
+            "language": "zh",
+            "stream": False,
+        }
+
+        try:
+            resp = _req.post(
+                f"{self._base_url}/tts",
+                json=payload,
+                timeout=60,
+            )
+            resp.raise_for_status()
+
+            data = resp.json()
+            audio_b64 = data.get("audio_data", "")
+            if audio_b64:
+                return base64.b64decode(audio_b64)
+
+            # 如果响应直接是二进制音频（某些部署方式）
+            content_type = resp.headers.get("content-type", "")
+            if "audio" in content_type or "octet-stream" in content_type:
+                return resp.content
+
+            logger.warning("自定义 TTS 响应中无 audio_data 字段")
+            return b""
+
+        except Exception as e:
+            logger.error("自定义 TTS 调用失败 (%s): %s", self._base_url, e)
+            return b""
+
+    @staticmethod
+    def is_available() -> bool:
+        """检查自定义 TTS 是否可用。"""
+        return bool(settings.custom_tts_url)
+
+
 class QwenSTT:
     """基于 Qwen3-Omni OpenAI 兼容模式的语音识别。"""
 
@@ -242,7 +307,13 @@ class VoiceInterviewInterface:
 
     def __init__(self):
         self._text_interface = TextInterface()
-        self._tts = QwenTTS() if QwenTTS.is_available() else None
+        # TTS 优先级：自定义远程推理服务 > DashScope API
+        if CustomTTS.is_available():
+            self._tts = CustomTTS()
+        elif QwenTTS.is_available():
+            self._tts = QwenTTS()
+        else:
+            self._tts = None
         self._stt = QwenSTT() if QwenTTS.is_available() else None
 
     @property

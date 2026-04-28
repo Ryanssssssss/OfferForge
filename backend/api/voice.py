@@ -18,11 +18,15 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 @router.post("/tts")
 async def text_to_speech(body: TTSRequest):
     """将文本合成为语音，返回 audio/wav 二进制。"""
-    from interfaces.voice_interface import QwenTTS
+    from interfaces.voice_interface import QwenTTS, CustomTTS
 
-    tts = QwenTTS()
-    if not tts.is_available():
-        raise HTTPException(503, "TTS 服务未配置 (缺少 VOICE_API_KEY)")
+    # 优先使用自定义远程推理服务
+    if CustomTTS.is_available():
+        tts = CustomTTS()
+    elif QwenTTS.is_available():
+        tts = QwenTTS()
+    else:
+        raise HTTPException(503, "TTS 服务未配置（需要配置 VOICE_API_KEY 或自定义 TTS 地址）")
 
     audio_bytes = await asyncio.to_thread(tts.synthesize, body.text)
     if not audio_bytes:

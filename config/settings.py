@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     voice_model_name: str = "qwen3-omni-flash"
     voice_name: str = "Chelsie"
 
+    # ── 自定义 TTS 推理服务（远程 IP:端口）──
+    custom_tts_url: str = ""  # 如 http://192.168.1.100:7860，留空则使用 DashScope
+
     # ── RAG ──
     local_embedding_model: str = "BAAI/bge-small-zh-v1.5"
     question_bank_path: str = "./core/data/question_bank.json"

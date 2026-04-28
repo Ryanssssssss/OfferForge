@@ -36,6 +36,7 @@ export function SettingsDialog() {
   const [currentModel, setCurrentModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [voiceKey, setVoiceKey] = useState("");
+  const [customTtsUrl, setCustomTtsUrl] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
   const [hasVoiceKey, setHasVoiceKey] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,6 +49,7 @@ export function SettingsDialog() {
       setCurrentModel(res.current_model || "");
       setHasApiKey(res.has_api_key);
       setHasVoiceKey(res.has_voice_key);
+      setCustomTtsUrl(res.custom_tts_url || "");
     });
   }, []);
 
@@ -71,6 +73,7 @@ export function SettingsDialog() {
         model: currentModel || undefined,
         api_key: apiKey || undefined,
         voice_api_key: voiceKey || undefined,
+        custom_tts_url: customTtsUrl,
       });
       setSaved(true);
       setHasApiKey(!!apiKey || hasApiKey);
@@ -189,6 +192,27 @@ export function SettingsDialog() {
                 dashscope.console.aliyun.com
               </a>
               {" "}获取 API Key。
+            </p>
+          </div>
+
+          <Separator />
+
+          {/* Custom TTS URL */}
+          <div className="space-y-2">
+            <Label>
+              自定义 TTS 推理服务地址
+              {customTtsUrl && (
+                <span className="ml-2 text-xs text-green-600">已配置</span>
+              )}
+            </Label>
+            <Input
+              type="text"
+              placeholder="如 192.168.1.100:7860 或 http://10.0.0.5:8000"
+              value={customTtsUrl}
+              onChange={(e) => setCustomTtsUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              填写自部署的 Qwen3-TTS 推理服务地址（IP:端口），优先于 DashScope API 使用。留空则使用上方的 DashScope 服务。
             </p>
           </div>
 

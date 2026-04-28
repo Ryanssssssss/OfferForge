@@ -337,6 +337,7 @@ async def get_providers():
         "current_model": settings.llm_model_name or None,
         "has_api_key": has_key,
         "has_voice_key": bool(settings.voice_api_key),
+        "custom_tts_url": settings.custom_tts_url,
     }
 
 
@@ -358,6 +359,9 @@ async def update_config(body: dict):
     if "voice_api_key" in body and body["voice_api_key"]:
         settings.voice_api_key = body["voice_api_key"]
         env_updates["VOICE_API_KEY"] = body["voice_api_key"]
+    if "custom_tts_url" in body:
+        settings.custom_tts_url = body["custom_tts_url"] or ""
+        env_updates["CUSTOM_TTS_URL"] = body["custom_tts_url"] or ""
 
     if env_updates:
         _persist_env(env_updates)
